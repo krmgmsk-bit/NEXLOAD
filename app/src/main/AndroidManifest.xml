@@ -6,8 +6,8 @@
     <application
         android:allowBackup="false"
         android:label="NEXLOAD"
-        android:icon="@drawable/nexload_icon"
-        android:roundIcon="@drawable/nexload_icon"
+        android:icon="@drawable/nexload_yeni"
+        android:roundIcon="@drawable/nexload_yeni"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false">
 
