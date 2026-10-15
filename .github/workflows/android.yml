@@ -31,9 +31,24 @@ jobs:
           yes | "$SDKMANAGER" --licenses || true
           "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Check AndroidManifest XML
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+
+          path = "app/src/main/AndroidManifest.xml"
+
+          try:
+              ET.parse(path)
+              print("XML syntax OK")
+          except ET.ParseError as e:
+              print(f"XML ERROR: {e}")
+              raise
+          PY
+
       - name: Build APK
         run: |
-          gradle --no-daemon assembleDebug
+          gradle --no-daemon :app:assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
