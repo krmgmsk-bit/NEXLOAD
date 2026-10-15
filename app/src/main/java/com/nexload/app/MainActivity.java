@@ -1,95 +1,257 @@
-
 package com.nexload.app;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.EditText;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
+    private final int cyan = Color.rgb(22, 215, 255);
+    private final int purple = Color.rgb(174, 73, 255);
+    private final int white = Color.rgb(240, 244, 255);
+    private final int muted = Color.rgb(163, 175, 209);
+    private LinearLayout root;
+    private EditText urlInput;
+    private TextView status;
+
+    private int dp(float value) {
+        return (int) (getResources().getDisplayMetrics().density * value + .5f);
+    }
+
+    private GradientDrawable panel(int fill, int stroke, float radius) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(fill);
+        bg.setCornerRadius(dp(radius));
+        bg.setStroke(dp(1.5f), stroke);
+        return bg;
+    }
+
+    private GradientDrawable gradient() {
+        GradientDrawable bg = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{Color.rgb(0, 104, 235), Color.rgb(62, 35, 176), Color.rgb(175, 39, 218)});
+        bg.setCornerRadius(dp(14));
+        bg.setStroke(dp(2), cyan);
+        return bg;
+    }
+
+    private TextView text(String value, float size, int color, boolean bold) {
+        TextView view = new TextView(this);
+        view.setText(value);
+        view.setTextSize(size);
+        view.setTextColor(color);
+        if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        return view;
+    }
+
+    private LinearLayout column() {
+        LinearLayout v = new LinearLayout(this);
+        v.setOrientation(LinearLayout.VERTICAL);
+        return v;
+    }
+
+    private LinearLayout row() {
+        LinearLayout v = new LinearLayout(this);
+        v.setOrientation(LinearLayout.HORIZONTAL);
+        v.setGravity(Gravity.CENTER_VERTICAL);
+        return v;
+    }
+
+    private LinearLayout.LayoutParams lp(int width, int height) {
+        return new LinearLayout.LayoutParams(width < 0 ? width : dp(width), height < 0 ? height : dp(height));
+    }
+
+    private void toast(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    protected void onCreate(Bundle state) {
+        super.onCreate(state);
+        getWindow().setStatusBarColor(Color.rgb(3, 7, 21));
+        getWindow().setNavigationBarColor(Color.rgb(3, 7, 21));
 
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setGravity(Gravity.CENTER);
-        layout.setPadding(32, 32, 32, 32);
-        layout.setBackgroundColor(Color.rgb(9, 10, 22));
+        root = column();
+        root.setBackgroundColor(Color.rgb(3, 7, 21));
+        setContentView(root);
 
-        TextView title = new TextView(this);
-        title.setText("NEXLOAD");
-        title.setTextSize(34);
-        title.setTypeface(null, Typeface.BOLD);
-        title.setTextColor(Color.rgb(0, 210, 255));
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(false);
+        scroll.setVerticalScrollBarEnabled(false);
+        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+
+        LinearLayout content = column();
+        content.setPadding(dp(14), dp(20), dp(14), dp(16));
+        scroll.addView(content);
+
+        TextView title = text("NEXL⬇AD", 42, cyan, true);
         title.setGravity(Gravity.CENTER);
-        layout.addView(title);
+        title.setShadowLayer(dp(13), 0, 0, cyan);
+        content.addView(title, lp(-1, -2));
 
-        TextView subtitle = new TextView(this);
-        subtitle.setText("AI Media Downloader");
-        subtitle.setTextSize(16);
-        subtitle.setTextColor(Color.rgb(185, 125, 255));
+        TextView subtitle = text("A I   M E D I A   D O W N L O A D E R", 12, muted, true);
         subtitle.setGravity(Gravity.CENTER);
-        subtitle.setPadding(0, 12, 0, 50);
-        layout.addView(subtitle);
+        content.addView(subtitle, lp(-1, -2));
 
-        EditText urlInput = new EditText(this);
-        urlInput.setHint("Video veya görsel bağlantısı");
+        TextView slogan = text("H I Z L I     •     K O L A Y     •     Y Ü K S E K   K A L İ T E", 9, muted, false);
+        slogan.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams sloganParams = lp(-1, -2);
+        sloganParams.topMargin = dp(12);
+        sloganParams.bottomMargin = dp(28);
+        content.addView(slogan, sloganParams);
+
+        LinearLayout linkPanel = row();
+        linkPanel.setPadding(dp(12), dp(10), dp(10), dp(10));
+        linkPanel.setBackground(panel(Color.rgb(9, 18, 46), cyan, 16));
+        content.addView(linkPanel, lp(-1, -2));
+
+        TextView chain = text("🔗", 25, cyan, true);
+        chain.setGravity(Gravity.CENTER);
+        linkPanel.addView(chain, lp(38, 54));
+
+        urlInput = new EditText(this);
+        urlInput.setTextColor(white);
+        urlInput.setHintTextColor(muted);
+        urlInput.setHint("Video veya görsel bağlantısını yapıştırın...");
+        urlInput.setTextSize(13);
         urlInput.setSingleLine(true);
-        urlInput.setTextColor(Color.WHITE);
-        urlInput.setHintTextColor(Color.LTGRAY);
-        layout.addView(urlInput,
-            new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        );
+        urlInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        urlInput.setBackgroundColor(Color.TRANSPARENT);
+        linkPanel.addView(urlInput, new LinearLayout.LayoutParams(0, dp(54), 1));
 
-        Button downloadButton = new Button(this);
-        downloadButton.setText("İNDİR");
-        downloadButton.setTextColor(Color.WHITE);
-
-        GradientDrawable buttonBg = new GradientDrawable(
-            GradientDrawable.Orientation.LEFT_RIGHT,
-            new int[] {
-                Color.rgb(0, 120, 255),
-                Color.rgb(145, 45, 220)
+        TextView paste = text("▣", 30, white, true);
+        paste.setGravity(Gravity.CENTER);
+        paste.setBackground(panel(Color.rgb(24, 24, 69), purple, 12));
+        linkPanel.addView(paste, lp(46, 52));
+        paste.setOnClickListener(v -> {
+            ClipboardManager manager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (manager != null && manager.hasPrimaryClip()) {
+                ClipData clip = manager.getPrimaryClip();
+                if (clip != null && clip.getItemCount() > 0) {
+                    CharSequence value = clip.getItemAt(0).coerceToText(this);
+                    urlInput.setText(value);
+                    urlInput.setSelection(urlInput.length());
+                    status.setText("Bağlantı alındı • Analiz özelliği yakında");
+                    return;
+                }
             }
-        );
-        buttonBg.setCornerRadius(22);
-        downloadButton.setBackground(buttonBg);
+            toast("Panoda bağlantı bulunamadı");
+        });
 
-        LinearLayout.LayoutParams buttonParams =
-            new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                140
-            );
-        buttonParams.topMargin = 35;
-        layout.addView(downloadButton, buttonParams);
+        LinearLayout analysis = row();
+        analysis.setPadding(dp(18), dp(18), dp(12), dp(18));
+        analysis.setBackground(panel(Color.rgb(9, 15, 37), purple, 14));
+        LinearLayout.LayoutParams analysisParams = lp(-1, -2);
+        analysisParams.topMargin = dp(18);
+        content.addView(analysis, analysisParams);
 
-        downloadButton.setOnClickListener(v -> {
+        TextView radar = text("◎", 49, cyan, false);
+        radar.setGravity(Gravity.CENTER);
+        analysis.addView(radar, lp(80, 70));
+        LinearLayout info = column();
+        info.setPadding(dp(12), 0, 0, 0);
+        analysis.addView(info, new LinearLayout.LayoutParams(0, -2, 1));
+        info.addView(text("Bağlantı yapıştırın", 17, white, true));
+        status = text("İçerik otomatik olarak analiz edilecek.", 12, muted, false);
+        info.addView(status);
+
+        TextView download = text("⬇   İNDİRMEYİ BAŞLAT", 21, Color.WHITE, true);
+        download.setGravity(Gravity.CENTER);
+        download.setBackground(gradient());
+        download.setElevation(dp(7));
+        LinearLayout.LayoutParams downloadParams = lp(-1, 82);
+        downloadParams.topMargin = dp(18);
+        content.addView(download, downloadParams);
+        download.setOnClickListener(v -> {
             String url = urlInput.getText().toString().trim();
-
             if (url.isEmpty()) {
-                Toast.makeText(this,
-                    "Lütfen bağlantı girin",
-                    Toast.LENGTH_SHORT).show();
+                toast("Lütfen önce bağlantı yapıştırın");
+            } else if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                toast("Geçerli bir http/https bağlantısı girin");
             } else {
-                Toast.makeText(this,
-                    "İndirme özelliği sonraki aşamada eklenecek",
-                    Toast.LENGTH_LONG).show();
+                status.setText("Bağlantı hazır • Analiz ve indirme sonraki aşamada");
+                toast("Analiz ve indirme henüz etkin değil");
             }
         });
 
-        setContentView(layout);
+        LinearLayout features = row();
+        LinearLayout.LayoutParams featureParams = lp(-1, -2);
+        featureParams.topMargin = dp(22);
+        featureParams.bottomMargin = dp(20);
+        content.addView(features, featureParams);
+        feature(features, "ϟ", "Hızlı", "Tek bağlantı ile\nhızlı indirme", cyan);
+        feature(features, "♢", "Kolay", "Otomatik analiz\nve uygun seçenekler", purple);
+        feature(features, "☆", "Yüksek Kalite", "Kaynağın sunduğu\nen iyi kalite", Color.rgb(255, 119, 231));
+
+        LinearLayout recent = column();
+        recent.setPadding(dp(14), dp(14), dp(14), dp(18));
+        recent.setBackground(panel(Color.rgb(8, 16, 41), purple, 14));
+        content.addView(recent, lp(-1, -2));
+        LinearLayout recentHeader = row();
+        recent.addView(recentHeader, lp(-1, -2));
+        TextView recentTitle = text("◴  Son İndirmeler", 18, white, true);
+        recentHeader.addView(recentTitle, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView seeAll = text("Tümünü Gör  ❯", 12, cyan, false);
+        recentHeader.addView(seeAll);
+        seeAll.setOnClickListener(v -> toast("İndirmeler ekranı sonraki aşamada eklenecek"));
+        TextView empty = text("Henüz indirilmiş içerik yok.", 13, muted, false);
+        empty.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams emptyParams = lp(-1, 90);
+        emptyParams.topMargin = dp(8);
+        recent.addView(empty, emptyParams);
+
+        LinearLayout nav = row();
+        nav.setPadding(dp(5), dp(7), dp(5), dp(7));
+        nav.setBackground(panel(Color.rgb(8, 13, 35), cyan, 12));
+        root.addView(nav, lp(-1, 78));
+        navItem(nav, "⌂", "Ana Sayfa", true);
+        navItem(nav, "⬇", "İndirmeler", false);
+        navItem(nav, "✧", "AI Araçları", false);
+        navItem(nav, "⚙", "Ayarlar", false);
+    }
+
+    private void feature(LinearLayout parent, String symbol, String title, String description, int color) {
+        LinearLayout item = column();
+        item.setGravity(Gravity.CENTER);
+        parent.addView(item, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView icon = text(symbol, 31, color, true);
+        icon.setGravity(Gravity.CENTER);
+        icon.setShadowLayer(dp(9), 0, 0, color);
+        item.addView(icon);
+        TextView name = text(title, 13, white, true);
+        name.setGravity(Gravity.CENTER);
+        item.addView(name);
+        TextView detail = text(description, 10, muted, false);
+        detail.setGravity(Gravity.CENTER);
+        item.addView(detail);
+    }
+
+    private void navItem(LinearLayout parent, String symbol, String label, boolean selected) {
+        LinearLayout item = column();
+        item.setGravity(Gravity.CENTER);
+        if (selected) item.setBackground(panel(Color.rgb(7, 36, 76), cyan, 10));
+        parent.addView(item, new LinearLayout.LayoutParams(0, -1, 1));
+        TextView icon = text(symbol, 27, selected ? cyan : white, true);
+        icon.setGravity(Gravity.CENTER);
+        item.addView(icon);
+        TextView name = text(label, 11, selected ? cyan : muted, selected);
+        name.setGravity(Gravity.CENTER);
+        item.addView(name);
+        item.setOnClickListener(v -> {
+            if (!selected) toast(label + " bölümü sonraki aşamada eklenecek");
+        });
     }
 }
