@@ -22,11 +22,6 @@ jobs:
 
       - name: Set up Android SDK
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          ls "$ANDROID_HOME/cmdline-tools"
-
-      - name: Install Android SDK packages
-        run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses || true
           "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
@@ -35,16 +30,19 @@ jobs:
         run: |
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
-
-          path = "app/src/main/AndroidManifest.xml"
-
-          try:
-              ET.parse(path)
-              print("XML syntax OK")
-          except ET.ParseError as e:
-              print(f"XML ERROR: {e}")
-              raise
+          ET.parse("app/src/main/AndroidManifest.xml")
+          print("XML syntax OK")
           PY
+
+      - name: Restore signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.NEXLOAD_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::NEXLOAD_KEYSTORE_BASE64 secret is missing"
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
 
       - name: Build APK
         run: |
