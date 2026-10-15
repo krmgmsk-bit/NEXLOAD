@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.DownloadManager;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -17,6 +19,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -33,6 +36,18 @@ public class MainActivity extends Activity {
     private TextView status;
     private TextView recentText;
     private long lastDownloadId = -1;
+    private ProgressBar progressBar;
+    private TextView progressLabel;
+    private LinearLayout progressPanel;
+    private final Handler progressHandler = new Handler(Looper.getMainLooper());
+    private boolean trackingDownload = false;
+    private final Runnable progressPoll = new Runnable() {
+        @Override public void run() {
+            if (!trackingDownload) return;
+            updateDownloadProgress();
+            if (trackingDownload) progressHandler.postDelayed(this, 650);
+        }
+    };
 
     private int dp(float value) { return (int) (getResources().getDisplayMetrics().density * value + .5f); }
     private GradientDrawable panel(int fill, int stroke, float radius) {
@@ -106,6 +121,23 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams downloadParams = lp(-1, 82); downloadParams.topMargin = dp(18);
         content.addView(download, downloadParams);
         download.setOnClickListener(v -> startDownload());
+        progressPanel = column();
+        progressPanel.setPadding(dp(14), dp(14), dp(14), dp(14));
+        progressPanel.setBackground(panel(Color.rgb(9, 18, 46), purple, 14));
+        LinearLayout.LayoutParams progressParams = lp(-1, -2);
+        progressParams.topMargin = dp(14);
+        content.addView(progressPanel, progressParams);
+        progressLabel = text("⬇ İndirme bekleniyor • %0", 14, cyan, true);
+        progressPanel.addView(progressLabel, lp(-1, -2));
+        progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progressBar.setMax(100);
+        progressBar.setProgress(0);
+        progressBar.setProgressTintList(android.content.res.ColorStateList.valueOf(cyan));
+        progressBar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(38, 46, 82)));
+        LinearLayout.LayoutParams barParams = lp(-1, 14);
+        barParams.topMargin = dp(10);
+        progressPanel.addView(progressBar, barParams);
+        progressPanel.setVisibility(android.view.View.GONE);
         LinearLayout features = row(); LinearLayout.LayoutParams featureParams = lp(-1, -2);
         featureParams.topMargin = dp(22); featureParams.bottomMargin = dp(20); content.addView(features, featureParams);
         feature(features, "ϟ", "Hızlı", "Tek bağlantı ile\nhızlı indirme", cyan);
@@ -155,6 +187,12 @@ public class MainActivity extends Activity {
             DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
             if (manager == null) { toast("İndirme yöneticisi kullanılamıyor"); return; }
             lastDownloadId = manager.enqueue(request);
+            progressHandler.removeCallbacks(progressPoll);
+            trackingDownload = true;
+            progressPanel.setVisibility(android.view.View.VISIBLE);
+            progressBar.setIndeterminate(true);
+            progressLabel.setText("⬇ İndirme başlatılıyor...");
+            progressHandler.post(progressPoll);
             status.setText("İndirme başlatıldı • Sonucu İndirmeler'den kontrol edin");
             recentText.setText("Başlatıldı: " + fileName + "\nİndirme durumunu bildirimlerden kontrol edin.");
             toast("İndirme kuyruğuna eklendi");
@@ -162,6 +200,57 @@ public class MainActivity extends Activity {
             status.setText("İndirme başlatılamadı: " + e.getClass().getSimpleName());
             toast("İndirme başlatılamadı");
         }
+    }
+
+    private void updateDownloadProgress() {
+        if (lastDownloadId < 0) { trackingDownload = false; return; }
+        DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+        if (manager == null) { trackingDownload = false; return; }
+        DownloadManager.Query query = new DownloadManager.Query().setFilterById(lastDownloadId);
+        try (Cursor cursor = manager.query(query)) {
+            if (cursor == null || !cursor.moveToFirst()) {
+                trackingDownload = false;
+                progressBar.setIndeterminate(false);
+                progressLabel.setText("İndirme kaydı bulunamadı");
+                return;
+            }
+            int state = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+            long received = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+            long total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+            if (state == DownloadManager.STATUS_SUCCESSFUL) {
+                trackingDownload = false;
+                progressBar.setIndeterminate(false);
+                progressBar.setProgress(100);
+                progressLabel.setText("✓ İndirme tamamlandı • %100");
+                status.setText("Dosya İndirilenler klasörüne kaydedildi");
+                recentText.setText("Son indirme tamamlandı • İndirmeler'den açabilirsiniz");
+            } else if (state == DownloadManager.STATUS_FAILED) {
+                trackingDownload = false;
+                progressBar.setIndeterminate(false);
+                progressLabel.setText("✕ İndirme başarısız");
+                status.setText("Bağlantı veya sunucu nedeniyle indirme başarısız oldu");
+                recentText.setText("Son indirme başarısız oldu");
+            } else if (total > 0) {
+                int percent = (int) Math.min(99, Math.max(0, received * 100.0 / total));
+                progressBar.setIndeterminate(false);
+                progressBar.setProgress(percent);
+                progressLabel.setText(String.format(Locale.getDefault(), "⬇ İndiriliyor • %%%d  (%.1f / %.1f MB)",
+                        percent, received / 1048576.0, total / 1048576.0));
+            } else {
+                progressBar.setIndeterminate(true);
+                progressLabel.setText(String.format(Locale.getDefault(), "⬇ İndiriliyor • %.1f MB (toplam boyut bilinmiyor)", received / 1048576.0));
+            }
+        } catch (Exception e) {
+            trackingDownload = false;
+            progressBar.setIndeterminate(false);
+            progressLabel.setText("İndirme durumu okunamadı");
+        }
+    }
+
+    @Override protected void onDestroy() {
+        trackingDownload = false;
+        progressHandler.removeCallbacks(progressPoll);
+        super.onDestroy();
     }
 
     private void openDownloads() {
