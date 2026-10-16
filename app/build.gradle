@@ -15,6 +15,22 @@ android {
         versionName '1.0.1'
     }
 
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('NEXLOAD_KEYSTORE_FILE') ?: 'nexload-release.jks')
+            storePassword System.getenv('NEXLOAD_KEYSTORE_PASSWORD')
+            keyAlias 'nexload'
+            keyPassword System.getenv('NEXLOAD_KEY_PASSWORD')
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
